@@ -20,7 +20,7 @@ def _wordnet_pos(tag: str) -> str:
 
 # outputs
 # dict: word (string) -> (dict: next_word (string) -> weight (int))
-def loader(filename: str) -> dict[str, dict[str, int]]:
+def loader_clean(filename: str) -> dict[str, dict[str, int]]:
   with open(filename, "r") as file:
     content = file.read().lower()
 
@@ -30,6 +30,36 @@ def loader(filename: str) -> dict[str, dict[str, int]]:
   tagged = pos_tag(tokens)
   words = [lemmatizer.lemmatize(tok, _wordnet_pos(tag)) for tok, tag in tagged]
   words = [w for w in words if w not in stop_words]
+
+  res_graph = {}
+
+  for i in range(len(words) - 1):
+    word = words[i]
+    next_word = words[i + 1]
+
+    if word not in res_graph:
+      res_graph[word] = {}
+
+    if next_word not in res_graph[word]:
+      res_graph[word][next_word] = 0
+
+    res_graph[word][next_word] += 1
+
+  # add last word to graph as a sink
+  last_word = words[-1]
+
+  if last_word not in res_graph:
+    res_graph[last_word] = {}
+
+  return res_graph
+
+def loader_raw(filename: str) -> dict[str, dict[str, int]]:
+  with open(filename, "r") as file:
+    content = file.read().lower()
+
+  # lowercase + strip punctuation only — keep tense, number, stopwords, contractions
+  words = [w.strip(".,!?;:\"()[]{}") for w in content.split()]
+  words = [w for w in words if w]
 
   res_graph = {}
 
