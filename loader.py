@@ -1,10 +1,12 @@
 from nltk.stem import PorterStemmer
 
+# using stemming --> technique from lecture
 def clean_word(word: str) -> str:
   stemmer = PorterStemmer()
   return stemmer.stem(word.lower()).strip(".,!?;:\"()[]{}'")
 
-# (word, (next_word, weight))
+# outputs
+# dict: word (string) -> (dict: next_word (string) -> weight (int))
 def loader(filename: str) -> dict[str, dict[str, int]]:
   with open(filename, "r") as file:
     content = file.read()
@@ -26,10 +28,11 @@ def loader(filename: str) -> dict[str, dict[str, int]]:
 
     res_graph[word][next_word] += 1
 
+  # add last word to graph as a sink
+  last_word = clean_word(words[-1])
+  
+  if last_word not in res_graph:
+    res_graph[last_word] = {}
+
   return res_graph
 
-
-graph = loader("lexigraph/test.txt")
-
-for word in graph:
-  print(f"{word}: {graph[word]}")
