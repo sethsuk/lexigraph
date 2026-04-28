@@ -3,6 +3,7 @@ import dijkstra
 import kosaraju
 import markov
 import path_finder
+import pagerank
 
 def main():
   graph_lemmatized = loader.loader_clean("lexigraph/alice-in-wonderland.txt")
@@ -26,5 +27,11 @@ def main():
   for path, weight in top_phrases_test:
     print(f"Path: {' '.join(path)}, Total Weight: {weight}")
 
+  pagerank_scores = pagerank.pagerank(graph_lemmatized)
+  scored = [(score, word) for word, score in pagerank_scores.items()]
+  scored.sort(reverse=True)
+  print("\nTop 20 words by PageRank:")
+  for score, word in scored[:20]:
+      print(f"{word}: {score:.5f}")
 if __name__ == "__main__":
   main()
