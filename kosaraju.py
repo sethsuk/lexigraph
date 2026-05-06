@@ -1,4 +1,11 @@
 def scc(graph: dict[str, dict[str, int]], weight_req: int) -> list[list[str]]:
+  """
+  Find strongly connected components in the graph using Kosaraju's algorithm, with an optional weight requirement for edges.
+
+  Args:
+    graph: A dictionary representing the word graph: (word -> (next_word -> weight)).
+    weight_req: The minimum weight required for an edge to be considered in the SCC computation.
+  """
   visited = set()
   finish_stack = []
 

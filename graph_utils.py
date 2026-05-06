@@ -2,6 +2,7 @@ Graph = dict[str, dict[str, int]]
 
 
 def filter_for_viz(graph: Graph, min_weight: int, drop_isolates: bool) -> Graph:
+  """Filter the graph for visualization by removing edges below a certain weight and optionally dropping isolated nodes."""
   filtered: Graph = {}
 
   for node, neighbors in graph.items():
@@ -44,6 +45,8 @@ def to_cy_elements(
   node_classes: dict[str, str] | None = None,
   edge_classes: dict[tuple[str, str], str] | None = None,
 ) -> list[dict]:
+  """
+  Convert the graph to a list of elements suitable for Cytoscape visualization, with optional classes for nodes and edges."""
   elements: list[dict] = []
   node_classes = node_classes or {}
   edge_classes = edge_classes or {}
@@ -69,6 +72,7 @@ def to_cy_elements(
 
 
 def subgraph_from_path(graph: Graph, path: list[str]) -> Graph:
+  """Extract a subgraph containing only the nodes and edges along the given path."""
   sub: Graph = {node: {} for node in path}
 
   for i in range(len(path) - 1):
@@ -81,6 +85,7 @@ def subgraph_from_path(graph: Graph, path: list[str]) -> Graph:
 
 
 def subgraph_from_paths(graph: Graph, paths: list[list[str]]) -> Graph:
+  """Extract a subgraph containing only the nodes and edges along the given paths."""
   sub: Graph = {}
 
   for path in paths:
@@ -101,6 +106,7 @@ def subgraph_from_sccs(
   *,
   min_size: int = 2,
 ) -> tuple[Graph, dict[str, str]]:
+  """Extract a subgraph containing only the nodes and edges within strongly connected components that meet the minimum size requirement, and return a mapping of nodes to their SCC classes."""
   kept = [scc for scc in sccs if len(scc) >= min_size]
   node_class_map: dict[str, str] = {}
   members: set[str] = set()

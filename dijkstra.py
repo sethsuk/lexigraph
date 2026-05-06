@@ -14,6 +14,14 @@ def _make_cost_fn(graph: dict[str, dict[str, int]], mode: str) -> Callable[[str,
   raise ValueError(f"unknown cost mode: {mode!r}")
 
 def dijkstra(graph: dict[str, dict[str, int]], source: str, *, cost: str = "weight") -> dict[str, float]:
+  """
+  Compute Dijkstra distances from the source node to all other nodes in the graph, using the specified cost mode.
+
+  Args:
+    graph: A dictionary representing the word graph: (word -> (next_word -> weight)).
+    source: The source node to compute distances from.
+    cost: The cost mode to use for edge weights ("weight" or "neglog").
+  """
   edge_cost = _make_cost_fn(graph, cost)
   dist = {node: float('inf') for node in graph}
   dist[source] = 0
@@ -36,6 +44,7 @@ def dijkstra(graph: dict[str, dict[str, int]], source: str, *, cost: str = "weig
   return dist
 
 def dijkstra_path(graph: dict[str, dict[str, int]], source: str, target: str, *, cost: str = "weight") -> tuple[float, list[str]]:
+  """Compute the shortest path from source to target using Dijkstra's algorithm, with the specified cost mode."""
   if source not in graph or target not in graph:
     return float('inf'), []
 

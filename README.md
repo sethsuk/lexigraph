@@ -1,0 +1,3 @@
+# Lexigraph User Manual
+
+## Structure

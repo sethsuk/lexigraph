@@ -18,9 +18,14 @@ def _wordnet_pos(tag: str) -> str:
   if tag.startswith('R'): return 'r'
   return 'n'
 
-# outputs
-# dict: word (string) -> (dict: next_word (string) -> weight (int))
 def loader_clean_from_text(content: str) -> dict[str, dict[str, int]]:
+  """
+  Load text and build a directed graph: (word -> (next_word -> weight)).
+  Cleans the text by lowercasing, removing punctuation, lemmatizing, and removing stopwords.
+
+  Args:
+    content: The raw text content to process.
+  """
   content = content.lower()
 
   # clean text
@@ -33,6 +38,13 @@ def loader_clean_from_text(content: str) -> dict[str, dict[str, int]]:
   return _build_adjacency(words)
 
 def loader_raw_from_text(content: str) -> dict[str, dict[str, int]]:
+  """
+  Load text and build a directed graph: (word -> (next_word -> weight)).
+  Does not clean the text, keeps all words as-is.
+  
+  Args:
+    content: The raw text content to process.
+  """
   content = content.lower()
 
   # lowercase + strip punctuation only — keep tense, number, stopwords, contractions
@@ -50,6 +62,7 @@ def loader_raw(filename: str) -> dict[str, dict[str, int]]:
     return loader_raw_from_text(file.read())
 
 def _build_adjacency(words: list[str]) -> dict[str, dict[str, int]]:
+  """Build a directed graph from a list of words: (word -> (next_word -> weight))."""
   res_graph: dict[str, dict[str, int]] = {}
 
   if not words:

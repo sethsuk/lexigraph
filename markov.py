@@ -1,6 +1,14 @@
 import random
 
 def generate_markov_chain(graph: dict[str, dict[str, int]], start_word: str, length: int) -> list[str]:
+  """
+  Generate a Markov chain of words from the given graph.
+  
+  Args:
+    graph: A dictionary representing the word graph: (word -> (next_word -> weight)).
+    start_word: The word to start the Markov chain from.
+    length: The desired length of the Markov chain (number of words).
+  """
   if start_word not in graph:
     raise ValueError(f"Start word '{start_word}' not in graph")
 
