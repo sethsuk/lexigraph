@@ -126,6 +126,17 @@ app.layout = html.Div(style={"fontFamily": "system-ui, sans-serif", "maxWidth": 
         html.Div(style={"height": "12px"}),
         html.Label("Target word", style=LABEL_STYLE),
         dcc.Dropdown(id="dijkstra-target", placeholder="Upload a corpus first", options=[], searchable=True, clearable=True),
+        html.Div(style={"height": "12px"}),
+        html.Label("Cost function", style=LABEL_STYLE),
+        dcc.RadioItems(
+          id="dijkstra-cost",
+          options=[
+            {"label": " Rare transitions (sum of counts)", "value": "weight"},
+            {"label": " Most likely path (−log probability)", "value": "neglog"},
+          ],
+          value="weight",
+          labelStyle={"display": "block", "marginBottom": "4px"},
+        ),
         html.Div("Words ranked by total edge weight (most-connected first).", style={"color": "#666", "fontSize": "11px", "marginTop": "8px"}),
       ]),
 
@@ -237,15 +248,21 @@ def _ranked_options(graph) -> list[dict]:
   Output("dijkstra-target", "options"),
   Output("markov-start", "options"),
   Output("top-start", "options"),
+  Output("dijkstra-source", "placeholder"),
+  Output("dijkstra-target", "placeholder"),
+  Output("markov-start", "placeholder"),
+  Output("top-start", "placeholder"),
   Input("corpus-hash", "data"),
 )
 def populate_dropdowns(corpus_hash):
   if not corpus_hash or corpus_hash not in _GRAPH_CACHE:
-    return [], [], [], []
+    msg = "Upload a corpus first"
+    return [], [], [], [], msg, msg, msg, msg
   entry = _GRAPH_CACHE[corpus_hash]
   clean_opts = entry["clean_options"]
   raw_opts = entry["raw_options"]
-  return clean_opts, clean_opts, raw_opts, clean_opts
+  placeholder = "Type to search…"
+  return clean_opts, clean_opts, raw_opts, clean_opts, placeholder, placeholder, placeholder, placeholder
 
 
 def _empty(message: str):
@@ -262,6 +279,7 @@ def _empty(message: str):
   Input("full-drop-isolates", "value"),
   Input("dijkstra-source", "value"),
   Input("dijkstra-target", "value"),
+  Input("dijkstra-cost", "value"),
   Input("scc-min-weight", "value"),
   Input("markov-start", "value"),
   Input("markov-length", "value"),
@@ -273,7 +291,7 @@ def _empty(message: str):
 def update(
   corpus_hash, mode,
   full_min_weight, full_drop_isolates,
-  dij_source, dij_target,
+  dij_source, dij_target, dij_cost,
   scc_min_weight,
   markov_start, markov_length, _markov_reroll,
   top_start, top_k, top_n,
@@ -290,7 +308,7 @@ def update(
     return _full_graph(clean, full_min_weight or 2, "on" in (full_drop_isolates or []))
 
   if mode == "dijkstra":
-    return _dijkstra(clean, (dij_source or "").strip().lower(), (dij_target or "").strip().lower())
+    return _dijkstra(clean, (dij_source or "").strip().lower(), (dij_target or "").strip().lower(), dij_cost or "weight")
 
   if mode == "scc":
     return _scc(clean, scc_min_weight or 2)
@@ -327,7 +345,15 @@ def _full_graph(graph, min_weight, drop_isolates):
   return graph_utils.to_cy_elements(filtered), layout, caption
 
 
-def _dijkstra(graph, source, target):
+def _format_distance(distance, cost_mode):
+  import math
+  if cost_mode == "neglog":
+    prob = math.exp(-distance)
+    return f"{prob * 100:.2g}%"
+  return str(int(distance))
+
+
+def _dijkstra(graph, source, target, cost_mode):
   if not source or not target:
     elements, results = _empty("Enter both a source and a target word.")
     return elements, {"name": "preset"}, results
@@ -340,10 +366,10 @@ def _dijkstra(graph, source, target):
     elements, results = _empty(f"Target word '{target}' is not in the clean graph.")
     return elements, {"name": "preset"}, results
 
-  distance, path = dijkstra.dijkstra_path(graph, source, target)
+  distance, path = dijkstra.dijkstra_path(graph, source, target, cost=cost_mode)
 
   if not path:
-    distances_table = _distance_table(graph, source)
+    distances_table = _distance_table(graph, source, cost_mode)
     return [], {"name": "preset"}, html.Div([
       html.Div(f"No path from '{source}' to '{target}'.", style={"color": "#c53030", "marginBottom": "12px"}),
       distances_table,
@@ -356,30 +382,38 @@ def _dijkstra(graph, source, target):
     edge_classes={(path[i], path[i+1]): "path" for i in range(len(path)-1)},
   )
 
+  if cost_mode == "neglog":
+    summary_label = "Most likely path: "
+    summary_metric = f"  (joint probability {_format_distance(distance, cost_mode)})"
+  else:
+    summary_label = "Shortest path: "
+    summary_metric = f"  (total weight {_format_distance(distance, cost_mode)})"
+
   results = html.Div([
     html.Div([
-      html.Strong("Shortest path: "),
+      html.Strong(summary_label),
       html.Span(" → ".join(path)),
-      html.Span(f"  (total weight {int(distance)})", style={"color": "#666", "marginLeft": "8px"}),
+      html.Span(summary_metric, style={"color": "#666", "marginLeft": "8px"}),
     ], style={"marginBottom": "16px"}),
-    _distance_table(graph, source),
+    _distance_table(graph, source, cost_mode),
   ])
 
   return elements, {"name": "breadthfirst", "directed": True, "roots": f"#{source}", "spacingFactor": 1.2, "animate": False}, results
 
 
-def _distance_table(graph, source):
-  distances = dijkstra.dijkstra(graph, source)
+def _distance_table(graph, source, cost_mode):
+  distances = dijkstra.dijkstra(graph, source, cost=cost_mode)
   reachable = sorted(((w, n) for n, w in distances.items() if w != float("inf") and n != source), key=lambda x: x[0])
 
   if not reachable:
     return html.Div("(no other reachable words)", style={"color": "#666", "fontStyle": "italic"})
 
-  rows = [html.Tr([html.Td(n, style={"padding": "2px 12px 2px 0"}), html.Td(int(w))]) for w, n in reachable[:50]]
+  rows = [html.Tr([html.Td(n, style={"padding": "2px 12px 2px 0"}), html.Td(_format_distance(w, cost_mode))]) for w, n in reachable[:50]]
   more = html.Div(f"… {len(reachable) - 50} more", style={"color": "#666", "fontSize": "12px", "marginTop": "4px"}) if len(reachable) > 50 else None
 
+  unit = "joint probability" if cost_mode == "neglog" else "total weight"
   return html.Div([
-    html.Div(f"Distances from '{source}' (top 50 nearest)", style=LABEL_STYLE),
+    html.Div(f"Distances from '{source}' — top 50 ({unit})", style=LABEL_STYLE),
     html.Table([html.Tbody(rows)], style={"borderCollapse": "collapse", "fontSize": "13px"}),
     more,
   ])

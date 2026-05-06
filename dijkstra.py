@@ -1,9 +1,23 @@
 import heapq
+import math
+from typing import Callable
 
-def dijkstra(graph: dict[str, dict[str, int]], source: str) -> dict[str, float]:
+# cost modes:
+#   "weight" — sum of raw edge weights (path through rarest transitions)
+#   "neglog" — sum of -log(P(next|curr)) (path with highest joint probability)
+def _make_cost_fn(graph: dict[str, dict[str, int]], mode: str) -> Callable[[str, int], float]:
+  if mode == "weight":
+    return lambda _u, w: float(w)
+  if mode == "neglog":
+    out_strength = {n: sum(graph[n].values()) or 1 for n in graph}
+    return lambda u, w: -math.log(w / out_strength[u])
+  raise ValueError(f"unknown cost mode: {mode!r}")
+
+def dijkstra(graph: dict[str, dict[str, int]], source: str, *, cost: str = "weight") -> dict[str, float]:
+  edge_cost = _make_cost_fn(graph, cost)
   dist = {node: float('inf') for node in graph}
   dist[source] = 0
-  pq = [(0, source)]
+  pq: list[tuple[float, str]] = [(0.0, source)]
 
   while pq:
     distance, curr_node = heapq.heappop(pq)
@@ -13,7 +27,7 @@ def dijkstra(graph: dict[str, dict[str, int]], source: str) -> dict[str, float]:
       continue
 
     for neighbor, weight in graph[curr_node].items():
-      new_dist = distance + weight
+      new_dist = distance + edge_cost(curr_node, weight)
 
       if new_dist < dist[neighbor]:
         dist[neighbor] = new_dist
@@ -21,14 +35,15 @@ def dijkstra(graph: dict[str, dict[str, int]], source: str) -> dict[str, float]:
 
   return dist
 
-def dijkstra_path(graph: dict[str, dict[str, int]], source: str, target: str) -> tuple[float, list[str]]:
+def dijkstra_path(graph: dict[str, dict[str, int]], source: str, target: str, *, cost: str = "weight") -> tuple[float, list[str]]:
   if source not in graph or target not in graph:
     return float('inf'), []
 
+  edge_cost = _make_cost_fn(graph, cost)
   dist = {node: float('inf') for node in graph}
   prev: dict[str, str | None] = {node: None for node in graph}
   dist[source] = 0
-  pq = [(0, source)]
+  pq: list[tuple[float, str]] = [(0.0, source)]
 
   while pq:
     distance, curr_node = heapq.heappop(pq)
@@ -40,7 +55,7 @@ def dijkstra_path(graph: dict[str, dict[str, int]], source: str, target: str) ->
       continue
 
     for neighbor, weight in graph[curr_node].items():
-      new_dist = distance + weight
+      new_dist = distance + edge_cost(curr_node, weight)
 
       if new_dist < dist[neighbor]:
         dist[neighbor] = new_dist
