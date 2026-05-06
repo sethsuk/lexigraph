@@ -1,6 +1,7 @@
 *.txt
 !test/*.txt
 !requirements.txt
+!readme.txt
 
 __pycache__/
 .DS_Store
